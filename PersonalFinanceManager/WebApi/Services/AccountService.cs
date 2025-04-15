@@ -6,7 +6,7 @@ namespace PersonalFinanceManager.WebApi.Services;
 
 public class AccountService : IAccountService
 {
-    private readonly List<Account> accounts = new List<Account>();
+    private readonly List<Account> accounts = new();
 
     public IEnumerable<Account> GetAll() => accounts;
 
