@@ -1,10 +1,14 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace PersonalFinanceManager.WebApi.Models;
 
 
 public class Account
 {
+    [Key]
+    [Column("AccountId")]
     public int Id { get; set; }
 
     [Required]
