@@ -12,6 +12,16 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.WebHost.ConfigureKestrel((context, options) =>
+{
+    options.ListenAnyIP(80);
+    options.ListenAnyIP(443);
+/* options.ListenAnyIP(443, listenOptions =>
+    {
+        listenOptions.UseHttps("/app/certificate.pfx", "mypassword"); // U¿yj œcie¿ki i has³a
+    }); */
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -21,7 +31,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
