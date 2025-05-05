@@ -22,8 +22,9 @@ services:
       dockerfile: ./WebApi/Dockerfile
     image: webapi-image
     container_name: pfm-webapi
-    environment:
+    environment:  
       - ConnectionStrings__DefaultConnection=Server=database;Database=PersonalFinanceManager;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;Encrypt=False;
+      - ASPNETCORE_ENVIRONMENT=DEVELOPMENT
     ports:
       - "5000:80"
       - "5001:443"
