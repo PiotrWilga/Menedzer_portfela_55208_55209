@@ -16,6 +16,7 @@ public class AppDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        modelBuilder.Entity<Account>().ToTable("Account"); // upewniamy się, że pasuje do istniejącej tabeli
+        modelBuilder.Entity<Account>().ToTable("Account");
+        modelBuilder.Entity<Account>().Property(e => e.Type).HasColumnType("smallint");
     }
 }
