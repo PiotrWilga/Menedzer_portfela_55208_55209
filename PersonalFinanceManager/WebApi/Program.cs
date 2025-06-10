@@ -22,6 +22,7 @@ builder.WebHost.ConfigureKestrel((context, options) =>
     }); */
 });
 
+builder.Services.AddHttpClient(); // potrzebne do API zewnêtrznych
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
