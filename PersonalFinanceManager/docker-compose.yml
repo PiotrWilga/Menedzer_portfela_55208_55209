@@ -35,6 +35,20 @@ services:
       - app-network
     restart: unless-stopped
 
+  frontend:
+    build:
+      context: ./frontend/
+      dockerfile: Dockerfile
+    image: pfm-frontend
+    container_name: pfm-frontend
+    ports:
+      - "3000:3000"  # frontend na localhost:3000
+    networks:
+      - app-network
+    depends_on:
+      - webapi
+
+
 networks:
   app-network:
     driver: bridge
