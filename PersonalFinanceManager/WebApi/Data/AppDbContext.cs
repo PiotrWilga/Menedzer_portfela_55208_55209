@@ -1,13 +1,13 @@
 ﻿using PersonalFinanceManager.WebApi.Models;
 using Microsoft.EntityFrameworkCore;
-using PersonalFinanceManager.WebApi.Models;
-
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Reflection.Emit;
+using WebApi.Models;
 
 namespace PersonalFinanceManager.WebApi.Data;
 
-public class AppDbContext : DbContext
+public class AppDbContext : IdentityDbContext<ApplicationUser>
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
