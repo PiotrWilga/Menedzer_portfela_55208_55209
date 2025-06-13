@@ -13,7 +13,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IUserService, UserService>();
 
-builder.Services.AddScoped<PersonalFinanceManager.WebApi.Services.IAccountService, PersonalFinanceManager.WebApi.Services.AccountService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

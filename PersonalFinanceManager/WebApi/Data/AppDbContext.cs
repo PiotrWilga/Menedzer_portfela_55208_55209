@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<Account> Accounts { get; set; }
     public DbSet<AppUser> AppUsers { get; set; }
     public DbSet<AccountPermission> AccountPermissions { get; set; }
+    public DbSet<Category> Categories { get; set; }
 
 
 
@@ -45,5 +46,12 @@ public class AppDbContext : DbContext
             .WithMany(u => u.OwnedAccounts)
             .HasForeignKey(a => a.OwnerId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Category>().ToTable("Category");
+        modelBuilder.Entity<Category>()
+                .HasOne(c => c.Owner)
+                .WithMany(u => u.OwnedCategories)
+                .HasForeignKey(c => c.OwnerId)
+                .OnDelete(DeleteBehavior.Restrict);
     }
 }

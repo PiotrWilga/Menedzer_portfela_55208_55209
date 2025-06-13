@@ -27,6 +27,5 @@ public class Account
     [ForeignKey("OwnerId")]
     public AppUser Owner { get; set; }
 
-    // Współużytkownicy konta z ich uprawnieniami
     public ICollection<AccountPermission> AccountPermissions { get; set; }
 }
