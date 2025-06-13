@@ -20,4 +20,7 @@ public class AppUser
     public string? GoogleId { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public ICollection<Account> OwnedAccounts { get; set; }
+    public ICollection<AccountPermission> AccountPermissions { get; set; }
 }
