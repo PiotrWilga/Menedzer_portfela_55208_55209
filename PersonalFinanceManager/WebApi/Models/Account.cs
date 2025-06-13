@@ -28,4 +28,5 @@ public class Account
     public AppUser Owner { get; set; }
 
     public ICollection<AccountPermission> AccountPermissions { get; set; }
+    public ICollection<Transaction> Transactions { get; set; }
 }

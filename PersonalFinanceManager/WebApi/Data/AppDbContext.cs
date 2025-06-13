@@ -15,7 +15,7 @@ public class AppDbContext : DbContext
     public DbSet<AppUser> AppUsers { get; set; }
     public DbSet<AccountPermission> AccountPermissions { get; set; }
     public DbSet<Category> Categories { get; set; }
-
+    public DbSet<Transaction> Transactions { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -53,5 +53,25 @@ public class AppDbContext : DbContext
                 .WithMany(u => u.OwnedCategories)
                 .HasForeignKey(c => c.OwnerId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Transaction>().ToTable("Transaction");
+        modelBuilder.Entity<Transaction>()
+                .HasOne(t => t.Account)
+                .WithMany(a => a.Transactions)
+                .HasForeignKey(t => t.AccountId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Transaction>()
+            .HasOne(t => t.Category)
+            .WithMany()
+            .HasForeignKey(t => t.CategoryId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<Transaction>()
+            .HasOne(t => t.Owner)
+            .WithMany(u => u.OwnedTransactions)
+            .HasForeignKey(t => t.OwnerId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

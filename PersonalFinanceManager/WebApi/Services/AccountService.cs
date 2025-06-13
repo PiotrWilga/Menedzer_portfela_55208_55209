@@ -1,4 +1,5 @@
-﻿using PersonalFinanceManager.WebApi.Data;
+﻿// Services/AccountService.cs
+using PersonalFinanceManager.WebApi.Data;
 using PersonalFinanceManager.WebApi.Models;
 using System.Collections.Generic;
 using System.Linq;
@@ -130,5 +131,49 @@ public class AccountService : IAccountService
         _context.AccountPermissions.Remove(permission);
         _context.SaveChanges();
         return true;
+    }
+
+    // --- Nowe metody do zarządzania balansem konta ---
+    public bool UpdateAccountBalance(int accountId, decimal amountChange)
+    {
+        var account = _context.Accounts.Find(accountId);
+        if (account == null) return false;
+
+        account.Balance += amountChange;
+        _context.SaveChanges();
+        return true;
+    }
+
+    public decimal GetAccountBalance(int accountId)
+    {
+        return _context.Accounts.Where(a => a.Id == accountId).Select(a => a.Balance).FirstOrDefault();
+    }
+
+    public string GetAccountCurrency(int accountId)
+    {
+        return _context.Accounts.Where(a => a.Id == accountId).Select(a => a.CurrencyCode).FirstOrDefault();
+    }
+
+    public bool HasAccountAccess(int accountId, int userId, bool requireWriteAccess = false)
+    {
+        var account = _context.Accounts
+            .Include(a => a.AccountPermissions)
+            .FirstOrDefault(a => a.Id == accountId);
+
+        if (account == null) return false;
+
+        // Właściciel zawsze ma pełny dostęp
+        if (account.OwnerId == userId) return true;
+
+        // Sprawdź uprawnienia współużytkownika
+        var permission = account.AccountPermissions.FirstOrDefault(ap => ap.AppUserId == userId);
+        if (permission == null) return false; // Brak uprawnień
+
+        if (requireWriteAccess && permission.PermissionType == PermissionType.ReadOnly)
+        {
+            return false; // Wymagany zapis, ale użytkownik ma tylko odczyt
+        }
+
+        return true; // Ma odczyt lub odczyt/zapis zgodnie z wymaganiem
     }
 }
