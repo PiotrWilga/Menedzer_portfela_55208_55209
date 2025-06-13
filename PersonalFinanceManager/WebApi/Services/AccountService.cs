@@ -2,6 +2,8 @@
 using PersonalFinanceManager.WebApi.Models;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
+using PersonalFinanceManager.WebApi.Dtos;
 
 namespace PersonalFinanceManager.WebApi.Services;
 
@@ -14,38 +16,118 @@ public class AccountService : IAccountService
         _context = context;
     }
 
-    public IEnumerable<Account> GetAll() => _context.Accounts.ToList();
-
-    public Account GetById(int id) => _context.Accounts.Find(id);
-
-    public Account Create(Account account)
+    public IEnumerable<Account> GetAll(int userId)
     {
+        return _context.Accounts
+            .Include(a => a.Owner)
+            .Include(a => a.AccountPermissions)
+                .ThenInclude(ap => ap.AppUser)
+            .Where(a => a.OwnerId == userId || a.AccountPermissions.Any(ap => ap.AppUserId == userId))
+            .ToList();
+    }
+
+    public Account GetById(int id)
+    {
+        return _context.Accounts
+            .Include(a => a.Owner)
+            .Include(a => a.AccountPermissions)
+                .ThenInclude(ap => ap.AppUser)
+            .FirstOrDefault(a => a.Id == id);
+    }
+
+    public Account Create(CreateAccountDto accountDto, int ownerUserId)
+    {
+        var account = new Account
+        {
+            Name = accountDto.Name,
+            Type = accountDto.Type,
+            CurrencyCode = accountDto.CurrencyCode,
+            Balance = accountDto.Balance,
+            ShowInSummary = accountDto.ShowInSummary,
+            OwnerId = ownerUserId
+        };
+
         _context.Accounts.Add(account);
         _context.SaveChanges();
         return account;
     }
 
-    public bool Update(int id, Account updatedAccount)
+    public bool Update(int id, UpdateAccountDto updatedAccountDto, int userId)
     {
-        var account = _context.Accounts.Find(id);
+        var account = _context.Accounts
+            .Include(a => a.AccountPermissions)
+            .FirstOrDefault(a => a.Id == id);
+
         if (account == null) return false;
 
-        account.Name = updatedAccount.Name;
-        account.Type = updatedAccount.Type;
-        account.CurrencyCode = updatedAccount.CurrencyCode;
-        account.Balance = updatedAccount.Balance;
-        account.ShowInSummary = updatedAccount.ShowInSummary;
+        if (account.OwnerId != userId &&
+            !account.AccountPermissions.Any(ap => ap.AppUserId == userId && ap.PermissionType == PermissionType.ReadAndWrite))
+        {
+            return false;
+        }
+
+        account.Name = updatedAccountDto.Name ?? account.Name;
+        account.Type = updatedAccountDto.Type ?? account.Type;
+        account.CurrencyCode = updatedAccountDto.CurrencyCode ?? account.CurrencyCode;
+        account.Balance = updatedAccountDto.Balance ?? account.Balance;
+        account.ShowInSummary = updatedAccountDto.ShowInSummary ?? account.ShowInSummary;
 
         _context.SaveChanges();
         return true;
     }
 
-    public bool Delete(int id)
+    public bool Delete(int id, int userId)
     {
         var account = _context.Accounts.Find(id);
         if (account == null) return false;
 
+        if (account.OwnerId != userId)
+        {
+            return false;
+        }
+
         _context.Accounts.Remove(account);
+        _context.SaveChanges();
+        return true;
+    }
+
+    public bool AddAccountPermission(int accountId, int userId, PermissionType permissionType)
+    {
+        var account = _context.Accounts.Find(accountId);
+        var user = _context.AppUsers.Find(userId);
+
+        if (account == null || user == null) return false;
+
+        var existingPermission = _context.AccountPermissions
+            .FirstOrDefault(ap => ap.AccountId == accountId && ap.AppUserId == userId);
+
+        if (existingPermission != null)
+        {
+            existingPermission.PermissionType = permissionType;
+        }
+        else
+        {
+            var permission = new AccountPermission
+            {
+                AccountId = accountId,
+                AppUserId = userId,
+                PermissionType = permissionType
+            };
+            _context.AccountPermissions.Add(permission);
+        }
+
+        _context.SaveChanges();
+        return true;
+    }
+
+    public bool RemoveAccountPermission(int accountId, int userId)
+    {
+        var permission = _context.AccountPermissions
+            .FirstOrDefault(ap => ap.AccountId == accountId && ap.AppUserId == userId);
+
+        if (permission == null) return false;
+
+        _context.AccountPermissions.Remove(permission);
         _context.SaveChanges();
         return true;
     }
