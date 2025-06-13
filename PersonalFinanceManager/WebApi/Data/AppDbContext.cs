@@ -27,8 +27,9 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<AppUser>().HasIndex(u => u.Login).IsUnique();
         modelBuilder.Entity<AppUser>().HasIndex(u => u.Email).IsUnique();
 
+        modelBuilder.Entity<AccountPermission>().ToTable("AccountPermission");
         modelBuilder.Entity<AccountPermission>()
-            .HasKey(ap => ap.AccountPermissionId);
+            .HasKey(ap => new { ap.AccountId, ap.AppUserId });
 
         modelBuilder.Entity<AccountPermission>()
             .HasOne(ap => ap.Account)
@@ -43,6 +44,6 @@ public class AppDbContext : DbContext
             .HasOne(a => a.Owner)
             .WithMany(u => u.OwnedAccounts)
             .HasForeignKey(a => a.OwnerId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
