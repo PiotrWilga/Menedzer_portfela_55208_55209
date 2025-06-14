@@ -3,9 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using PersonalFinanceManager.WebApi.Data;
-using PersonalFinanceManager.WebApi.ExternalApis;
 using PersonalFinanceManager.WebApi.Services;
 using System.Text;
+using WebApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -87,7 +87,7 @@ builder.WebHost.ConfigureKestrel((context, options) =>
 });
 
 builder.Services.AddHttpClient(); // potrzebne do API zewnêtrznych
-builder.Services.AddHttpClient<IExchangeRateProvider, ExchangeRateApiProvider>();
+builder.Services.AddHttpClient<IExchangeRateService, ExchangeRateApiService>();
 builder.Services.AddHttpClient<IHistoricalExchangeRateService, NbpHistoricalExchangeRateService>();
 var app = builder.Build();
 

@@ -7,16 +7,16 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using PersonalFinanceManager.WebApi.Dtos;
 
-namespace PersonalFinanceManager.WebApi.ExternalApis
+namespace WebApi.Services
 {
-    public class ExchangeRateApiProvider : IExchangeRateProvider
+    public class ExchangeRateApiService : IExchangeRateService
     {
         private readonly HttpClient _httpClient;
         private readonly IMemoryCache _cache;
         private readonly string _apiKey;
         private readonly TimeSpan _cacheDuration;
 
-        public ExchangeRateApiProvider(
+        public ExchangeRateApiService(
             HttpClient httpClient,
             IMemoryCache cache,
             IConfiguration configuration)
@@ -30,10 +30,10 @@ namespace PersonalFinanceManager.WebApi.ExternalApis
             _cacheDuration = TimeSpan.FromMinutes(minutes);
         }
 
-        public async Task<ExchangeRateDto?> GetCurrentRateAsync(string baseCurrency, string targetCurrency)
+        public async Task<CurrentExchangeConversionDto?> GetCurrentRateAsync(string baseCurrency, string targetCurrency)
         {
             var cacheKey = $"exchange:{baseCurrency}->{targetCurrency}";
-            if (_cache.TryGetValue(cacheKey, out ExchangeRateDto cached))
+            if (_cache.TryGetValue(cacheKey, out CurrentExchangeConversionDto cached))
                 return cached;
 
             var url = $"https://v6.exchangerate-api.com/v6/{_apiKey}/latest/{baseCurrency}";
@@ -55,7 +55,7 @@ namespace PersonalFinanceManager.WebApi.ExternalApis
             if (!rates.TryGetProperty(targetCurrency, out var rateElement))
                 return null;
 
-            var dto = new ExchangeRateDto
+            var dto = new CurrentExchangeConversionDto
             {
                 Source = "ExchangeRate-API",
                 BaseCurrency = baseCurrency,
@@ -68,5 +68,25 @@ namespace PersonalFinanceManager.WebApi.ExternalApis
 
             return dto;
         }
+        public async Task<CurrentExchangeConversionDto?> ConvertCurrentAsync(string baseCurrency, string targetCurrency, decimal amount)
+        {
+            var rateDto = await GetCurrentRateAsync(baseCurrency, targetCurrency);
+            if (rateDto is null)
+                return null;
+
+            var convertedAmount = Math.Round(amount * rateDto.Rate, 4);
+
+            return new CurrentExchangeConversionDto
+            {
+                Source = rateDto.Source,
+                BaseCurrency = baseCurrency,
+                TargetCurrency = targetCurrency,
+                Rate = rateDto.Rate,
+                SourceAmount = amount,
+                ConvertedAmount = convertedAmount,
+                Timestamp = rateDto.Timestamp
+            };
+        }
+
     }
 }
