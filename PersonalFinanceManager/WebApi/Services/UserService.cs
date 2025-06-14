@@ -20,6 +20,30 @@ public class UserService : IUserService
         _configuration = configuration;
     }
 
+    private string GenerateJwtToken(AppUser user)
+    {
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Secret"] ?? "kOleeJny-kluCZ-SekREtny-w-ApliKAcyji");
+
+        var claims = new[]
+        {
+            new Claim("id", user.Id.ToString()),
+            new Claim(ClaimTypes.Name, user.Login),
+            new Claim(ClaimTypes.Email, user.Email)
+        };
+
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(claims),
+            Expires = DateTime.UtcNow.AddDays(7),
+            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key),
+                SecurityAlgorithms.HmacSha256Signature)
+        };
+
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        return tokenHandler.WriteToken(token);
+    }
+
     public async Task<(bool Success, string? Error)> RegisterAsync(RegisterDto dto)
     {
         var existingUser = await _dbContext.AppUsers
@@ -56,6 +80,23 @@ public class UserService : IUserService
         return (true, token, user, null);
     }
 
+    public async Task<(bool Success, UserDto? User, string? Error)> GetUserAsync(int id)
+    {
+        var user = await _dbContext.AppUsers.FindAsync(id);
+        if (user == null)
+            return (false, null, "User not found.");
+
+        var dto = new UserDto
+        {
+            Id = user.Id,
+            Login = user.Login,
+            Email = user.Email,
+            DefaultCurrency = user.DefaultCurrency
+        };
+
+        return (true, dto, null);
+    }
+
     public async Task<(bool Success, string? Error)> UpdateUserAsync(int userId, UpdateUserDto dto)
     {
         var user = await _dbContext.AppUsers.FindAsync(userId);
@@ -86,29 +127,5 @@ public class UserService : IUserService
         await _dbContext.SaveChangesAsync();
 
         return (true, null);
-    }
-
-    private string GenerateJwtToken(AppUser user)
-    {
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Secret"] ?? "kOleeJny-kluCZ-SekREtny-w-ApliKAcyji");
-
-        var claims = new[]
-        {
-            new Claim("id", user.Id.ToString()),
-            new Claim(ClaimTypes.Name, user.Login),
-            new Claim(ClaimTypes.Email, user.Email)
-        };
-
-        var tokenDescriptor = new SecurityTokenDescriptor
-        {
-            Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddDays(7),
-            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key),
-                SecurityAlgorithms.HmacSha256Signature)
-        };
-
-        var token = tokenHandler.CreateToken(tokenDescriptor);
-        return tokenHandler.WriteToken(token);
     }
 }
