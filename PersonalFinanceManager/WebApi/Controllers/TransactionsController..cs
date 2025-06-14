@@ -1,5 +1,4 @@
-﻿// Controllers/TransactionsController.cs
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using PersonalFinanceManager.WebApi.Models;
 using PersonalFinanceManager.WebApi.Services;
 using System.Collections.Generic;
@@ -10,12 +9,12 @@ using PersonalFinanceManager.WebApi.Dtos;
 namespace PersonalFinanceManager.WebApi.Controllers;
 
 [ApiController]
-[Route("api/transactions")]
+[Route("api/accounts/{accountId}/transactions")]
 [Authorize]
 public class TransactionsController : ControllerBase
 {
     private readonly ITransactionService _transactionService;
-    private readonly IAccountService _accountService; // Potrzebne do sprawdzenia dostępu do konta
+    private readonly IAccountService _accountService;
 
     public TransactionsController(ITransactionService transactionService, IAccountService accountService)
     {
@@ -34,39 +33,47 @@ public class TransactionsController : ControllerBase
     }
 
     [HttpGet]
-    public ActionResult<IEnumerable<Transaction>> GetAll([FromQuery] int? accountId = null)
+    public ActionResult<IEnumerable<TransactionDto>> GetAll(int accountId)
     {
         var userId = GetUserIdFromClaims();
 
-        // Jeśli podano accountId, sprawdź, czy użytkownik ma do niego dostęp
-        if (accountId.HasValue && !_accountService.HasAccountAccess(accountId.Value, userId))
+        if (!_accountService.HasAccountAccess(accountId, userId))
         {
             return Forbid("You do not have access to the specified account.");
         }
 
-        var transactions = _transactionService.GetAll(userId, accountId);
+        var transactions = _transactionService.GetAll(accountId, userId);
         return Ok(transactions);
     }
 
-    [HttpGet("{id}")]
-    public ActionResult<Transaction> GetById(int id)
+    [HttpGet("{transactionId}")]
+    public ActionResult<TransactionDto> GetById(int accountId, int transactionId)
     {
         var userId = GetUserIdFromClaims();
-        var transaction = _transactionService.GetById(id);
 
-        if (transaction == null) return NotFound();
+        if (!_accountService.HasAccountAccess(accountId, userId))
+        {
+            return Forbid("You do not have access to the specified account.");
+        }
 
-        // Sprawdź, czy użytkownik jest właścicielem transakcji
-        if (transaction.OwnerId != userId)
+        var transactionDto = _transactionService.GetById(transactionId, accountId);
+
+        if (transactionDto == null) return NotFound();
+
+        if (transactionDto.OwnerId != userId)
         {
             return Forbid("You do not have access to this transaction.");
         }
+        if (transactionDto.AccountId != accountId)
+        {
+            return NotFound("Transaction does not belong to the specified account.");
+        }
 
-        return Ok(transaction);
+        return Ok(transactionDto);
     }
 
     [HttpPost]
-    public ActionResult<Transaction> Create([FromBody] CreateTransactionDto transactionDto)
+    public ActionResult<TransactionDto> Create(int accountId, [FromBody] CreateTransactionDto transactionDto)
     {
         if (!ModelState.IsValid)
         {
@@ -74,18 +81,25 @@ public class TransactionsController : ControllerBase
         }
 
         var ownerId = GetUserIdFromClaims();
-        var (createdTransaction, _, _) = _transactionService.Create(transactionDto, ownerId, out string? errorMessage);
 
-        if (createdTransaction == null)
+        var (createdTransactionModel, _, _) = _transactionService.Create(accountId, transactionDto, ownerId, out string? errorMessage);
+
+        if (createdTransactionModel == null)
         {
             return BadRequest(new { message = errorMessage });
         }
 
-        return CreatedAtAction(nameof(GetById), new { id = createdTransaction.Id }, createdTransaction);
+        var returnedDto = _transactionService.GetById(createdTransactionModel.Id, createdTransactionModel.AccountId);
+        if (returnedDto == null)
+        {
+            return StatusCode(500, "Failed to retrieve created transaction data.");
+        }
+
+        return CreatedAtAction(nameof(GetById), new { accountId = returnedDto.AccountId, transactionId = returnedDto.Id }, returnedDto);
     }
 
-    [HttpPut("{id}")]
-    public IActionResult Update(int id, [FromBody] UpdateTransactionDto transactionDto)
+    [HttpPut("{transactionId}")]
+    public IActionResult Update(int accountId, int transactionId, [FromBody] UpdateTransactionDto transactionDto)
     {
         if (!ModelState.IsValid)
         {
@@ -93,30 +107,29 @@ public class TransactionsController : ControllerBase
         }
 
         var userId = GetUserIdFromClaims();
-        var (updatedTransaction, _, _) = _transactionService.Update(id, transactionDto, userId, out string? errorMessage);
+        var (updatedTransactionModel, _, _) = _transactionService.Update(transactionId, accountId, transactionDto, userId, out string? errorMessage);
 
-        if (updatedTransaction == null)
+        if (updatedTransactionModel == null)
         {
-            // Potencjalnie Forbid lub NotFound w zależności od błędu
             return BadRequest(new { message = errorMessage });
         }
 
         return NoContent();
     }
 
-    [HttpDelete("{id}")]
-    public IActionResult Delete(int id)
+    [HttpDelete("{transactionId}")]
+    public IActionResult Delete(int accountId, int transactionId)
     {
         var userId = GetUserIdFromClaims();
         decimal oldAmount;
         int oldAccountId;
 
-        var result = _transactionService.Delete(id, userId, out oldAmount, out oldAccountId);
+        var result = _transactionService.Delete(transactionId, accountId, userId, out oldAmount, out oldAccountId);
         if (!result)
         {
-            var transaction = _transactionService.GetById(id);
+            var transaction = _transactionService.GetById(transactionId, accountId);
             if (transaction == null) return NotFound();
-            return Forbid(); // Użytkownik nie ma uprawnień do usunięcia
+            return Forbid();
         }
 
         return NoContent();

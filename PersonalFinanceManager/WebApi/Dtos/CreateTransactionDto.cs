@@ -1,30 +1,25 @@
-﻿using System.ComponentModel.DataAnnotations;
-using PersonalFinanceManager.WebApi.Models;
+﻿// Dto/CreateTransactionDto.cs
+using System.ComponentModel.DataAnnotations;
 
 namespace PersonalFinanceManager.WebApi.Dtos;
 
 public class CreateTransactionDto
 {
     [Required]
-    [MinLength(2, ErrorMessage = "Transaction name must be at least 2 characters long.")]
-    [RegularExpression(@".*\S.*", ErrorMessage = "Transaction name cannot contain only whitespace.")]
-    public string Name { get; set; }
-
+    public string Name { get; set; } = string.Empty;
     public string? Address { get; set; }
-
     public string? Description { get; set; }
 
     [Required]
-    public decimal Amount { get; set; }
+    [Range(0.01, double.MaxValue, ErrorMessage = "Amount must be greater than 0.")]
+    public decimal Amount { get; set; } // Kwota w walucie konta
 
     public DateTime? Date { get; set; }
 
-    [Required]
-    public int AccountId { get; set; }
-
     public int? CategoryId { get; set; }
 
+    // Dane dla transakcji w innej walucie
     public decimal? OriginalAmount { get; set; }
-    public string? OriginalCurrencyCode { get; set; }
-    public decimal? ExchangeRate { get; set; }
+    public string? OriginalCurrencyCode { get; set; } // np. "USD"
+    public decimal? ExchangeRate { get; set; } // np. 4.05 (PLN/USD)
 }

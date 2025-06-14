@@ -10,7 +10,7 @@ namespace PersonalFinanceManager.WebApi.Services;
 public class TransactionService : ITransactionService
 {
     private readonly AppDbContext _context;
-    private readonly IAccountService _accountService; 
+    private readonly IAccountService _accountService;
 
     public TransactionService(AppDbContext context, IAccountService accountService)
     {
@@ -18,45 +18,90 @@ public class TransactionService : ITransactionService
         _accountService = accountService;
     }
 
-    public IEnumerable<Transaction> GetAll(int userId, int? accountId = null)
+    public IEnumerable<TransactionDto> GetAll(int accountId, int userId)
     {
-        var query = _context.Transactions
-            .Include(t => t.Account)
-            .Include(t => t.Category)
-            .Include(t => t.Owner)
-            .Where(t => t.OwnerId == userId); 
-
-        if (accountId.HasValue)
+        if (!_accountService.HasAccountAccess(accountId, userId))
         {
-            query = query.Where(t => t.AccountId == accountId.Value);
+            return Enumerable.Empty<TransactionDto>();
         }
 
-        return query.ToList();
+        return _context.Transactions
+                       .Include(t => t.Account)
+                           .ThenInclude(a => a.Owner)
+                       .Include(t => t.Category)
+                       .Include(t => t.Owner)
+                       .Where(t => t.AccountId == accountId && t.OwnerId == userId)
+                       .Select(t => new TransactionDto
+                       {
+                           Id = t.Id,
+                           Name = t.Name,
+                           Address = t.Address,
+                           Description = t.Description,
+                           Amount = t.Amount,
+                           Date = t.Date,
+                           AccountId = t.AccountId,
+                           AccountName = t.Account.Name,
+                           AccountCurrencyCode = t.Account.CurrencyCode,
+                           AccountType = t.Account.Type,
+                           CategoryId = t.CategoryId,
+                           CategoryName = t.Category != null ? t.Category.Name : null,
+                           CategoryColor = t.Category != null ? t.Category.Color : null,
+                           OriginalAmount = t.OriginalAmount,
+                           OriginalCurrencyCode = t.OriginalCurrencyCode,
+                           ExchangeRate = t.ExchangeRate,
+                           OwnerId = t.OwnerId,
+                           OwnerLogin = t.Owner.Login
+                       })
+                       .ToList();
     }
 
-    public Transaction GetById(int id)
+    public TransactionDto GetById(int transactionId, int accountId)
     {
-        return _context.Transactions
+        var transaction = _context.Transactions
             .Include(t => t.Account)
+                .ThenInclude(a => a.Owner)
             .Include(t => t.Category)
             .Include(t => t.Owner)
-            .FirstOrDefault(t => t.Id == id);
+            .FirstOrDefault(t => t.Id == transactionId && t.AccountId == accountId);
+
+        if (transaction == null) return null;
+
+        return new TransactionDto
+        {
+            Id = transaction.Id,
+            Name = transaction.Name,
+            Address = transaction.Address,
+            Description = transaction.Description,
+            Amount = transaction.Amount,
+            Date = transaction.Date,
+            AccountId = transaction.AccountId,
+            AccountName = transaction.Account.Name,
+            AccountCurrencyCode = transaction.Account.CurrencyCode,
+            AccountType = transaction.Account.Type,
+            CategoryId = transaction.CategoryId,
+            CategoryName = transaction.Category != null ? transaction.Category.Name : null,
+            CategoryColor = transaction.Category != null ? transaction.Category.Color : null,
+            OriginalAmount = transaction.OriginalAmount,
+            OriginalCurrencyCode = transaction.OriginalCurrencyCode,
+            ExchangeRate = transaction.ExchangeRate,
+            OwnerId = transaction.OwnerId,
+            OwnerLogin = transaction.Owner.Login
+        };
     }
 
-    public (Transaction? Transaction, decimal OldAmount, int OldAccountId) Create(CreateTransactionDto transactionDto, int ownerId, out string? errorMessage)
+    public (Transaction? Transaction, decimal OldAmount, int OldAccountId) Create(int accountId, CreateTransactionDto transactionDto, int ownerId, out string? errorMessage)
     {
         errorMessage = null;
-        decimal oldAmount = 0; 
-        int oldAccountId = 0; 
+        decimal oldAmount = 0;
+        int oldAccountId = 0;
 
-        
-        if (!_accountService.HasAccountAccess(transactionDto.AccountId, ownerId, requireWriteAccess: true))
+        if (!_accountService.HasAccountAccess(accountId, ownerId, requireWriteAccess: true))
         {
             errorMessage = "Account not found or you do not have write access to it.";
             return (null, oldAmount, oldAccountId);
         }
 
-        var accountCurrency = _accountService.GetAccountCurrency(transactionDto.AccountId);
+        var accountCurrency = _accountService.GetAccountCurrency(accountId);
         if (accountCurrency == null)
         {
             errorMessage = "Account currency could not be determined.";
@@ -68,13 +113,12 @@ public class TransactionService : ITransactionService
             Name = transactionDto.Name,
             Address = transactionDto.Address,
             Description = transactionDto.Description,
-            Date = transactionDto.Date ?? DateTime.UtcNow, 
-            AccountId = transactionDto.AccountId,
+            Date = transactionDto.Date ?? DateTime.UtcNow,
+            AccountId = accountId,
             CategoryId = transactionDto.CategoryId,
-            OwnerId = ownerId 
+            OwnerId = ownerId
         };
 
-        
         if (!string.IsNullOrEmpty(transactionDto.OriginalCurrencyCode) && transactionDto.OriginalCurrencyCode != accountCurrency)
         {
             if (!transactionDto.OriginalAmount.HasValue || !transactionDto.ExchangeRate.HasValue || transactionDto.ExchangeRate.Value <= 0)
@@ -85,8 +129,6 @@ public class TransactionService : ITransactionService
             transaction.OriginalAmount = transactionDto.OriginalAmount.Value;
             transaction.OriginalCurrencyCode = transactionDto.OriginalCurrencyCode;
             transaction.ExchangeRate = transactionDto.ExchangeRate.Value;
-            
-            
             transaction.Amount = transactionDto.OriginalAmount.Value * transactionDto.ExchangeRate.Value;
         }
         else
@@ -108,13 +150,19 @@ public class TransactionService : ITransactionService
         return (transaction, oldAmount, oldAccountId);
     }
 
-    public (Transaction? Transaction, decimal OldAmount, int OldAccountId) Update(int id, UpdateTransactionDto transactionDto, int userId, out string? errorMessage)
+    public (Transaction? Transaction, decimal OldAmount, int OldAccountId) Update(int transactionId, int accountId, UpdateTransactionDto transactionDto, int userId, out string? errorMessage)
     {
         errorMessage = null;
-        var existingTransaction = _context.Transactions.Find(id);
+        var existingTransaction = _context.Transactions.Find(transactionId);
         if (existingTransaction == null)
         {
             errorMessage = "Transaction not found.";
+            return (null, 0, 0);
+        }
+
+        if (existingTransaction.AccountId != accountId)
+        {
+            errorMessage = "Transaction does not belong to the specified account.";
             return (null, 0, 0);
         }
 
@@ -124,7 +172,7 @@ public class TransactionService : ITransactionService
             return (null, 0, 0);
         }
 
-        if (!_accountService.HasAccountAccess(existingTransaction.AccountId, userId, requireWriteAccess: true))
+        if (!_accountService.HasAccountAccess(accountId, userId, requireWriteAccess: true))
         {
             errorMessage = "You do not have write access to the associated account.";
             return (null, 0, 0);
@@ -139,11 +187,13 @@ public class TransactionService : ITransactionService
         existingTransaction.Date = transactionDto.Date ?? existingTransaction.Date;
         existingTransaction.CategoryId = transactionDto.CategoryId ?? existingTransaction.CategoryId;
 
-        if (transactionDto.OriginalCurrencyCode != null && transactionDto.OriginalCurrencyCode != _accountService.GetAccountCurrency(existingTransaction.AccountId))
+        var currentAccountCurrency = _accountService.GetAccountCurrency(existingTransaction.AccountId);
+
+        if (transactionDto.OriginalCurrencyCode != null && transactionDto.OriginalCurrencyCode != currentAccountCurrency)
         {
             if (!transactionDto.OriginalAmount.HasValue || !transactionDto.ExchangeRate.HasValue || transactionDto.ExchangeRate.Value <= 0)
             {
-                errorMessage = "Original amount and exchange rate are required for cross-currency transactions.";
+                errorMessage = "Original amount and exchange rate are required for cross-currency transactions when changing currency.";
                 return (null, oldAmount, oldAccountId);
             }
             existingTransaction.OriginalAmount = transactionDto.OriginalAmount.Value;
@@ -159,7 +209,6 @@ public class TransactionService : ITransactionService
             existingTransaction.ExchangeRate = null;
         }
 
-
         _context.Transactions.Update(existingTransaction);
         _context.SaveChanges();
 
@@ -169,20 +218,25 @@ public class TransactionService : ITransactionService
         return (existingTransaction, oldAmount, oldAccountId);
     }
 
-    public bool Delete(int id, int userId, out decimal oldAmount, out int oldAccountId)
+    public bool Delete(int transactionId, int accountId, int userId, out decimal oldAmount, out int oldAccountId)
     {
         oldAmount = 0;
         oldAccountId = 0;
 
-        var transaction = _context.Transactions.Find(id);
+        var transaction = _context.Transactions.Find(transactionId);
         if (transaction == null) return false;
+
+        if (transaction.AccountId != accountId)
+        {
+            return false;
+        }
 
         if (transaction.OwnerId != userId)
         {
             return false;
         }
 
-                if (!_accountService.HasAccountAccess(transaction.AccountId, userId, requireWriteAccess: true))
+        if (!_accountService.HasAccountAccess(accountId, userId, requireWriteAccess: true))
         {
             return false;
         }
