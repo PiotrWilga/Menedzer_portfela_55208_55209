@@ -8,7 +8,7 @@ using System.Security.Claims;
 namespace PersonalFinanceManager.WebApi.Controllers;
 
 [ApiController]
-[Route("users")]
+[Route("api/users")]
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
