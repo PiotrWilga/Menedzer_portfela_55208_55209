@@ -1,12 +1,15 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using PersonalFinanceManager.WebApi.Data;
+using PersonalFinanceManager.WebApi.ExternalApis;
 using PersonalFinanceManager.WebApi.Services;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddMemoryCache(); // do cacheowania danych z zewnêtrznych API, ¿eby nie nadwyrê¿aæ limitów
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -84,6 +87,7 @@ builder.WebHost.ConfigureKestrel((context, options) =>
 });
 
 builder.Services.AddHttpClient(); // potrzebne do API zewnêtrznych
+builder.Services.AddHttpClient<IExchangeRateProvider, ExchangeRateApiProvider>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
