@@ -34,6 +34,7 @@ public class CategoryService : ICategoryService
         {
             Name = categoryDto.Name,
             Color = categoryDto.Color,
+            Description = categoryDto.Description,
             OwnerId = ownerUserId
         };
 
@@ -54,6 +55,7 @@ public class CategoryService : ICategoryService
 
         category.Name = updatedCategoryDto.Name ?? category.Name;
         category.Color = updatedCategoryDto.Color ?? category.Color;
+        category.Description = updatedCategoryDto.Description ?? category.Description;
 
         _context.SaveChanges();
         return true;

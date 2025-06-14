@@ -10,7 +10,7 @@ namespace PersonalFinanceManager.WebApi.Controllers;
 
 [ApiController]
 [Route("api/categories")]
-[Authorize] 
+[Authorize]
 public class CategoriesController : ControllerBase
 {
     private readonly ICategoryService _categoryService;
@@ -20,7 +20,7 @@ public class CategoriesController : ControllerBase
         _categoryService = categoryService;
     }
 
-    
+
     private int GetUserIdFromClaims()
     {
         var userIdClaim = User.FindFirst("id")?.Value;
@@ -47,10 +47,10 @@ public class CategoriesController : ControllerBase
 
         if (category == null) return NotFound();
 
-        
+
         if (category.OwnerId != userId)
         {
-            return Forbid(); 
+            return Forbid();
         }
 
         return Ok(category);
@@ -83,7 +83,7 @@ public class CategoriesController : ControllerBase
         {
             var category = _categoryService.GetById(id);
             if (category == null) return NotFound();
-            return Forbid(); 
+            return Forbid();
         }
         return NoContent();
     }
@@ -97,7 +97,7 @@ public class CategoriesController : ControllerBase
         {
             var category = _categoryService.GetById(id);
             if (category == null) return NotFound();
-            return Forbid(); 
+            return Forbid();
         }
         return NoContent();
     }

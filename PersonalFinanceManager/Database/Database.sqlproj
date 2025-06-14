@@ -64,7 +64,7 @@
     <Build Include="dbo\Tables\Account.sql" />
     <Build Include="dbo\Tables\AppUser.sql" />
     <Build Include="dbo\Tables\AccountPermission.sql" />
-    <Build Include="dbo\Tables\dbo.Category.sql" />
+    <Build Include="dbo\Tables\Category.sql" />
     <Build Include="dbo\Tables\Transaction.sql" />
   </ItemGroup>
   <ItemGroup>
