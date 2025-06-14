@@ -88,6 +88,7 @@ builder.WebHost.ConfigureKestrel((context, options) =>
 
 builder.Services.AddHttpClient(); // potrzebne do API zewnêtrznych
 builder.Services.AddHttpClient<IExchangeRateProvider, ExchangeRateApiProvider>();
+builder.Services.AddHttpClient<IHistoricalExchangeRateService, NbpHistoricalExchangeRateService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
