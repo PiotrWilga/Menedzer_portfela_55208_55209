@@ -2,12 +2,13 @@
 using Microsoft.AspNetCore.Mvc;
 using PersonalFinanceManager.WebApi.Dtos;
 using PersonalFinanceManager.WebApi.Services;
+using PersonalFinanceManager.WebApi.Extensions;
 using System.Security.Claims;
 
 namespace PersonalFinanceManager.WebApi.Controllers;
 
 [ApiController]
-[Route("users")]
+[Route("api/users")]
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
@@ -50,14 +51,29 @@ public class UsersController : ControllerBase
     }
 
     [Authorize]
-    [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateUser(int id, UpdateUserDto dto)
+    [HttpGet("me")]
+    public async Task<IActionResult> GetCurrentUser()
     {
-        var userIdClaim = User.FindFirst("id")?.Value;
-        if (userIdClaim == null || int.Parse(userIdClaim) != id)
-            return Forbid();
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized();
 
-        var result = await _userService.UpdateUserAsync(id, dto);
+        var result = await _userService.GetUserAsync(userId.Value);
+        if (!result.Success)
+            return NotFound(new { message = result.Error });
+
+        return Ok(result.User);
+    }
+
+    [Authorize]
+    [HttpPut("me")]
+    public async Task<IActionResult> UpdateCurrentUser(UpdateUserDto dto)
+    {
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized();
+
+        var result = await _userService.UpdateUserAsync(userId.Value, dto);
         if (!result.Success)
             return BadRequest(new { message = result.Error });
 
@@ -65,14 +81,14 @@ public class UsersController : ControllerBase
     }
 
     [Authorize]
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteUser(int id)
+    [HttpDelete("me")]
+    public async Task<IActionResult> DeleteCurrentUser()
     {
-        var userIdClaim = User.FindFirst("id")?.Value;
-        if (userIdClaim == null || int.Parse(userIdClaim) != id)
-            return Forbid();
+        var userId = User.GetUserId();
+        if (userId == null)
+            return Unauthorized();
 
-        var result = await _userService.DeleteUserAsync(id);
+        var result = await _userService.DeleteUserAsync(userId.Value);
         if (!result.Success)
             return NotFound(new { message = result.Error });
 

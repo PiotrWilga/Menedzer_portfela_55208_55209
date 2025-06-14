@@ -23,4 +23,6 @@ public class AppUser
 
     public ICollection<Account> OwnedAccounts { get; set; }
     public ICollection<AccountPermission> AccountPermissions { get; set; }
+    public ICollection<Category> OwnedCategories { get; set; }
+    public ICollection<Transaction> OwnedTransactions { get; set; }
 }

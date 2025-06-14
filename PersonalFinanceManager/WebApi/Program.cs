@@ -1,19 +1,24 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using PersonalFinanceManager.WebApi.Data;
+using PersonalFinanceManager.WebApi.ExternalApis;
 using PersonalFinanceManager.WebApi.Services;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddMemoryCache(); // do cacheowania danych z zewnêtrznych API, ¿eby nie nadwyrê¿aæ limitów
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<IUserService, UserService>();
 
-builder.Services.AddScoped<PersonalFinanceManager.WebApi.Services.IAccountService, PersonalFinanceManager.WebApi.Services.AccountService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<ITransactionService, TransactionService>();
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -82,6 +87,8 @@ builder.WebHost.ConfigureKestrel((context, options) =>
 });
 
 builder.Services.AddHttpClient(); // potrzebne do API zewnêtrznych
+builder.Services.AddHttpClient<IExchangeRateProvider, ExchangeRateApiProvider>();
+builder.Services.AddHttpClient<IHistoricalExchangeRateService, NbpHistoricalExchangeRateService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

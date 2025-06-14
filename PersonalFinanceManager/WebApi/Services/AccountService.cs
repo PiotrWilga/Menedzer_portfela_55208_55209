@@ -16,23 +16,48 @@ public class AccountService : IAccountService
         _context = context;
     }
 
-    public IEnumerable<Account> GetAll(int userId)
+    public IEnumerable<AccountDto> GetAll(int userId)
     {
         return _context.Accounts
-            .Include(a => a.Owner)
-            .Include(a => a.AccountPermissions)
-                .ThenInclude(ap => ap.AppUser)
-            .Where(a => a.OwnerId == userId || a.AccountPermissions.Any(ap => ap.AppUserId == userId))
-            .ToList();
+                       .Include(a => a.Owner)
+                       .Include(a => a.AccountPermissions)
+                           .ThenInclude(ap => ap.AppUser)
+                       .Where(a => a.OwnerId == userId || a.AccountPermissions.Any(ap => ap.AppUserId == userId))
+                       .Select(a => new AccountDto
+                       {
+                           Id = a.Id,
+                           Name = a.Name,
+                           Type = a.Type,
+                           CurrencyCode = a.CurrencyCode,
+                           Balance = a.Balance,
+                           ShowInSummary = a.ShowInSummary,
+                           OwnerId = a.OwnerId,
+                            
+                       })
+                       .ToList();
     }
 
-    public Account GetById(int id)
+    public AccountDto GetById(int id)
     {
-        return _context.Accounts
-            .Include(a => a.Owner)
-            .Include(a => a.AccountPermissions)
-                .ThenInclude(ap => ap.AppUser)
-            .FirstOrDefault(a => a.Id == id);
+        var account = _context.Accounts
+                              .Include(a => a.Owner)
+                              .Include(a => a.AccountPermissions)
+                                  .ThenInclude(ap => ap.AppUser)
+                              .FirstOrDefault(a => a.Id == id);
+
+        if (account == null) return null;
+
+        return new AccountDto
+        {
+            Id = account.Id,
+            Name = account.Name,
+            Type = account.Type,
+            CurrencyCode = account.CurrencyCode,
+            Balance = account.Balance,
+            ShowInSummary = account.ShowInSummary,
+            OwnerId = account.OwnerId,
+            OwnerLogin = account.Owner.Login
+        };
     }
 
     public Account Create(CreateAccountDto accountDto, int ownerUserId)
@@ -129,6 +154,47 @@ public class AccountService : IAccountService
 
         _context.AccountPermissions.Remove(permission);
         _context.SaveChanges();
+        return true;
+    }
+
+    public bool UpdateAccountBalance(int accountId, decimal amountChange)
+    {
+        var account = _context.Accounts.Find(accountId);
+        if (account == null) return false;
+
+        account.Balance += amountChange;
+        _context.SaveChanges();
+        return true;
+    }
+
+    public decimal GetAccountBalance(int accountId)
+    {
+        return _context.Accounts.Where(a => a.Id == accountId).Select(a => a.Balance).FirstOrDefault();
+    }
+
+    public string GetAccountCurrency(int accountId)
+    {
+        return _context.Accounts.Where(a => a.Id == accountId).Select(a => a.CurrencyCode).FirstOrDefault();
+    }
+
+    public bool HasAccountAccess(int accountId, int userId, bool requireWriteAccess = false)
+    {
+        var account = _context.Accounts
+            .Include(a => a.AccountPermissions)
+            .FirstOrDefault(a => a.Id == accountId);
+
+        if (account == null) return false;
+
+        if (account.OwnerId == userId) return true;
+
+        var permission = account.AccountPermissions.FirstOrDefault(ap => ap.AppUserId == userId);
+        if (permission == null) return false;
+
+        if (requireWriteAccess && permission.PermissionType == PermissionType.ReadOnly)
+        {
+            return false;
+        }
+
         return true;
     }
 }

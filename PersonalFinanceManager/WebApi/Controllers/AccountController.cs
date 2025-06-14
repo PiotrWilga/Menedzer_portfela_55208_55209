@@ -31,23 +31,21 @@ public class AccountsController : ControllerBase
     }
 
     [HttpGet]
-    public ActionResult<IEnumerable<Account>> GetAll()
+    public ActionResult<IEnumerable<AccountDto>> GetAll()
     {
         var userId = GetUserIdFromClaims();
-        var accounts = _accountService.GetAll(userId);
-        return Ok(accounts);
+        return Ok(_accountService.GetAll(userId));
     }
 
     [HttpGet("{id}")]
-    public ActionResult<Account> GetById(int id)
+    public ActionResult<AccountDto> GetById(int id)
     {
         var userId = GetUserIdFromClaims();
         var account = _accountService.GetById(id);
 
         if (account == null) return NotFound();
 
-        if (account.OwnerId != userId &&
-            !account.AccountPermissions.Any(ap => ap.AppUserId == userId))
+        if (!_accountService.HasAccountAccess(account.Id, userId))
         {
             return Forbid();
         }
@@ -56,7 +54,7 @@ public class AccountsController : ControllerBase
     }
 
     [HttpPost]
-    public ActionResult<Account> Create([FromBody] CreateAccountDto accountDto)
+    public ActionResult<Account> Create([FromBody] CreateAccountDto accountDto) // Nadal używa CreateAccountDto
     {
         if (!ModelState.IsValid)
         {
@@ -65,11 +63,12 @@ public class AccountsController : ControllerBase
 
         var ownerId = GetUserIdFromClaims();
         var createdAccount = _accountService.Create(accountDto, ownerId);
-        return CreatedAtAction(nameof(GetById), new { id = createdAccount.Id }, createdAccount);
+        var returnedDto = _accountService.GetById(createdAccount.Id);
+        return CreatedAtAction(nameof(GetById), new { id = createdAccount.Id }, returnedDto);
     }
 
     [HttpPut("{id}")]
-    public IActionResult Update(int id, [FromBody] UpdateAccountDto updatedAccountDto)
+    public IActionResult Update(int id, [FromBody] UpdateAccountDto updatedAccountDto) // Nadal używa UpdateAccountDto
     {
         if (!ModelState.IsValid)
         {
@@ -100,7 +99,6 @@ public class AccountsController : ControllerBase
         }
         return NoContent();
     }
-
     [HttpPost("{accountId}/permissions")]
     public IActionResult AddAccountPermission(int accountId, [FromBody] AddAccountPermissionDto dto)
     {
