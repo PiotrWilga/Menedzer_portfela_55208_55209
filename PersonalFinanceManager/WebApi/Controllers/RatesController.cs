@@ -1,6 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using PersonalFinanceManager.WebApi.ExternalApis;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using PersonalFinanceManager.WebApi.Dtos;
+using PersonalFinanceManager.WebApi.ExternalApis;
 
 namespace PersonalFinanceManager.WebApi.Controllers;
 
@@ -15,6 +16,7 @@ public class RatesController : ControllerBase
         _exchangeRateProvider = exchangeRateProvider;
     }
 
+    [Authorize]
     [HttpGet("current")]
     public async Task<ActionResult<ExchangeRateDto>> GetCurrentRate([FromQuery] string baseCurrency, [FromQuery] string targetCurrency)
     {
