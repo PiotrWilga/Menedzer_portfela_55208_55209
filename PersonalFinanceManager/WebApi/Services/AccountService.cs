@@ -1,5 +1,4 @@
-﻿// Services/AccountService.cs
-using PersonalFinanceManager.WebApi.Data;
+﻿using PersonalFinanceManager.WebApi.Data;
 using PersonalFinanceManager.WebApi.Models;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,23 +16,48 @@ public class AccountService : IAccountService
         _context = context;
     }
 
-    public IEnumerable<Account> GetAll(int userId)
+    public IEnumerable<AccountDto> GetAll(int userId)
     {
         return _context.Accounts
-            .Include(a => a.Owner)
-            .Include(a => a.AccountPermissions)
-                .ThenInclude(ap => ap.AppUser)
-            .Where(a => a.OwnerId == userId || a.AccountPermissions.Any(ap => ap.AppUserId == userId))
-            .ToList();
+                       .Include(a => a.Owner)
+                       .Include(a => a.AccountPermissions)
+                           .ThenInclude(ap => ap.AppUser)
+                       .Where(a => a.OwnerId == userId || a.AccountPermissions.Any(ap => ap.AppUserId == userId))
+                       .Select(a => new AccountDto
+                       {
+                           Id = a.Id,
+                           Name = a.Name,
+                           Type = a.Type,
+                           CurrencyCode = a.CurrencyCode,
+                           Balance = a.Balance,
+                           ShowInSummary = a.ShowInSummary,
+                           OwnerId = a.OwnerId,
+                            
+                       })
+                       .ToList();
     }
 
-    public Account GetById(int id)
+    public AccountDto GetById(int id)
     {
-        return _context.Accounts
-            .Include(a => a.Owner)
-            .Include(a => a.AccountPermissions)
-                .ThenInclude(ap => ap.AppUser)
-            .FirstOrDefault(a => a.Id == id);
+        var account = _context.Accounts
+                              .Include(a => a.Owner)
+                              .Include(a => a.AccountPermissions)
+                                  .ThenInclude(ap => ap.AppUser)
+                              .FirstOrDefault(a => a.Id == id);
+
+        if (account == null) return null;
+
+        return new AccountDto
+        {
+            Id = account.Id,
+            Name = account.Name,
+            Type = account.Type,
+            CurrencyCode = account.CurrencyCode,
+            Balance = account.Balance,
+            ShowInSummary = account.ShowInSummary,
+            OwnerId = account.OwnerId,
+            OwnerLogin = account.Owner.Login
+        };
     }
 
     public Account Create(CreateAccountDto accountDto, int ownerUserId)
@@ -133,7 +157,6 @@ public class AccountService : IAccountService
         return true;
     }
 
-    // --- Nowe metody do zarządzania balansem konta ---
     public bool UpdateAccountBalance(int accountId, decimal amountChange)
     {
         var account = _context.Accounts.Find(accountId);
@@ -162,18 +185,16 @@ public class AccountService : IAccountService
 
         if (account == null) return false;
 
-        // Właściciel zawsze ma pełny dostęp
         if (account.OwnerId == userId) return true;
 
-        // Sprawdź uprawnienia współużytkownika
         var permission = account.AccountPermissions.FirstOrDefault(ap => ap.AppUserId == userId);
-        if (permission == null) return false; // Brak uprawnień
+        if (permission == null) return false;
 
         if (requireWriteAccess && permission.PermissionType == PermissionType.ReadOnly)
         {
-            return false; // Wymagany zapis, ale użytkownik ma tylko odczyt
+            return false;
         }
 
-        return true; // Ma odczyt lub odczyt/zapis zgodnie z wymaganiem
+        return true;
     }
 }
