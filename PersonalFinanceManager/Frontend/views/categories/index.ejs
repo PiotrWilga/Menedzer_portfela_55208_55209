@@ -32,9 +32,10 @@
                         <% } %>
                     </td>
                     <td>
-                        <a href="/categories/edit/<%= category._id %>" class="btn btn-sm btn-warning me-2">Edytuj</a>
-                        <form action="/categories/delete/<%= category._id %>" method="POST" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć tę kategorię?');">
+                        <a href="/categories/<%= category.id %>/edit" class="btn btn-sm btn-warning me-2">Edytuj</a>
+                        <form action="/categories/<%= category._id %>?_method=DELETE" method="POST" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć tę kategorię?');">
                             <button type="submit" class="btn btn-sm btn-danger">Usuń</button>
+                            </form>
                         </form>
                     </td>
                 </tr>

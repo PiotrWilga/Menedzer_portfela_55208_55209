@@ -8,11 +8,11 @@ router.use(ensureAuthenticated);
 router.get('/', categoryController.renderCategoriesPage);
 
 router.get('/add', categoryController.renderAddCategoryPage);
-router.post('/add', categoryController.addCategory);
+router.post('/', categoryController.addCategory);
 
-router.get('/edit/:id', categoryController.renderEditCategoryPage);
-router.post('/edit/:id', categoryController.updateCategory); 
+router.get('/:id/edit', categoryController.renderEditCategoryPage);
+router.post('/:id', categoryController.updateCategory); 
 
-router.post('/delete/:id', categoryController.deleteCategory); 
+router.delete('/:id', categoryController.deleteCategory); 
 
 module.exports = router;
